@@ -1,0 +1,18 @@
+version: '3.9'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - STUDENT_DATA_FILE=/data/student_data.json
+    # persist the JSON data file on the host so data survives container recreation
+    volumes:
+      - ./student_data.json:/data/student_data.json
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request, sys; urllib.request.urlopen('http://127.0.0.1:5000/').read(); print('ok')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

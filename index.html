@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Search System</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #74ebd5, #ACB6E5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .container {
+      background: #fff;
+      padding: 20px 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      width: 400px;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #output {
+      margin-top: 20px;
+      font-size: 1rem;
+      color: #222;
+      font-weight: 500;
+    }
+
+    hr {
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Student Search System (Binary Search)</h1>
+  <div class="container">
+    <label>Enter student details in sorted order (by Roll No):</label>
+
+    <label>Roll Number</label>
+    <input type="number" id="rollNo" placeholder="Enter roll number">
+    <label>Name</label>
+    <input type="text" id="name" placeholder="Enter name">
+    <label>Department</label>
+    <input type="text" id="department" placeholder="Enter department">
+    <label>Marks</label>
+    <input type="number" id="marks" placeholder="Enter marks">
+    <button onclick="addStudent()">Add Student</button>
+
+    <hr>
+
+    <label>Search Roll Number</label>
+    <input type="number" id="searchRoll" placeholder="Enter roll number to search">
+    <button onclick="searchStudent()">Search</button>
+
+    <div id="output"></div>
+    <div id="list" style="margin-top:12px;font-size:0.95rem;color:#333"></div>
+  </div>
+
+  <script>
+    // Frontend integrated with Flask backend API (/api/students)
+    let students = [];
+
+    async function loadStudents() {
+      try {
+        const res = await fetch('/api/students');
+        if (!res.ok) throw new Error('Failed to load students');
+        students = await res.json();
+        // ensure consistent numeric rollNo field if available
+        students.forEach(s => { if (s.rollNo) s.rollNo = Number(s.rollNo); });
+        students.sort((a, b) => (a.rollNo || 0) - (b.rollNo || 0));
+        renderList();
+      } catch (err) {
+        console.error(err);
+        document.getElementById('output').innerText = '⚠️ Could not load students from backend.';
+      }
+    }
+
+    function renderList() {
+      const listEl = document.getElementById('list');
+      if (!students.length) {
+        listEl.innerHTML = '<em>No students available.</em>';
+        return;
+      }
+      listEl.innerHTML = '<strong>Students (sorted by Roll No):</strong>' +
+        '<ul>' + students.map(s => `<li>${s.rollNo || '—'} — ${s.name || ''} <small>(id:${s.id})</small></li>`).join('') + '</ul>';
+    }
+
+    async function addStudent() {
+      const rollNo = parseInt(document.getElementById('rollNo').value);
+      const name = document.getElementById('name').value;
+      const department = document.getElementById('department').value;
+      const marks = parseFloat(document.getElementById('marks').value);
+
+      if (!rollNo || !name || !department || isNaN(marks)) {
+        alert('Please fill all fields correctly!');
+        return;
+      }
+
+      // Send payload to backend. The backend will store arbitrary fields.
+      const payload = { rollNo, name, department, marks };
+      try {
+        const res = await fetch('/api/students', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Create failed');
+        const created = await res.json();
+        document.getElementById('output').innerText = '✅ Student added successfully!';
+        // refresh list
+        await loadStudents();
+        document.getElementById('rollNo').value = '';
+        document.getElementById('name').value = '';
+        document.getElementById('department').value = '';
+        document.getElementById('marks').value = '';
+      } catch (err) {
+        console.error(err);
+        alert('Failed to add student to backend.');
+      }
+    }
+
+    function binarySearch(arr, key) {
+      let low = 0;
+      let high = arr.length - 1;
+      while (low <= high) {
+        let mid = Math.floor((low + high) / 2);
+        if ((arr[mid].rollNo || 0) === key) return mid;
+        else if ((arr[mid].rollNo || 0) < key) low = mid + 1;
+        else high = mid - 1;
+      }
+      return -1;
+    }
+
+    async function searchStudent() {
+      const key = parseInt(document.getElementById('searchRoll').value);
+      if (isNaN(key)) {
+        alert('Enter a roll number to search');
+        return;
+      }
+      // Ensure fresh data
+      await loadStudents();
+      if (students.length === 0) {
+        alert('No students available');
+        return;
+      }
+
+      const index = binarySearch(students, key);
+      if (index !== -1) {
+        // Save the full student object (as returned by backend) and open detail page
+        localStorage.setItem('searchedStudent', JSON.stringify(students[index]));
+        window.open('student.html', '_blank');
+      } else {
+        alert(`❌ Student with Roll No ${key} not found!`);
+      }
+    }
+
+    // initial load
+    loadStudents();
+  </script>
+</body>
+</html>

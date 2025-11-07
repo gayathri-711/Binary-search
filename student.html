@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Details</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #a1c4fd, #c2e9fb);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .card {
+      background: #fff;
+      padding: 30px 40px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      text-align: center;
+      width: 350px;
+    }
+
+    h2 {
+      color: #333;
+    }
+
+    .detail {
+      font-size: 18px;
+      margin: 10px 0;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #388E3C;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🎓 Student Details</h2>
+    <div id="details"></div>
+    <div style="margin-top:12px">
+      <button id="updateBtn">Update</button>
+      <button id="deleteBtn" style="background:#e53935;margin-left:8px">Delete</button>
+      <button onclick="window.location.href='index.html'" style="background:#777;margin-left:8px">Back</button>
+    </div>
+  </div>
+
+  <script>
+    // Read the student object saved by index.html
+    const student = JSON.parse(localStorage.getItem('searchedStudent'));
+
+    function renderForm(s) {
+      if (!s) {
+        document.getElementById('details').innerHTML = '<p>No student data found!</p>';
+        document.getElementById('updateBtn').style.display = 'none';
+        document.getElementById('deleteBtn').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('details').innerHTML = `
+        <div class="detail"><label>Roll No</label><input id="rollNo" value="${s.rollNo || ''}"></div>
+        <div class="detail"><label>Name</label><input id="name" value="${s.name || ''}"></div>
+        <div class="detail"><label>Department</label><input id="department" value="${s.department || ''}"></div>
+        <div class="detail"><label>Marks</label><input id="marks" value="${s.marks || ''}"></div>
+        <div id="msg" style="margin-top:8px;color:#222;font-weight:600"></div>
+      `;
+
+      // attach handlers
+      document.getElementById('updateBtn').addEventListener('click', updateStudent);
+      document.getElementById('deleteBtn').addEventListener('click', deleteStudent);
+    }
+
+    async function updateStudent() {
+      if (!student || !student.id) {
+        alert('No student id available to update');
+        return;
+      }
+      const payload = {
+        rollNo: Number(document.getElementById('rollNo').value),
+        name: document.getElementById('name').value,
+        department: document.getElementById('department').value,
+        marks: Number(document.getElementById('marks').value)
+      };
+
+      try {
+        const res = await fetch(`/api/students/${student.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Update failed');
+        const updated = await res.json();
+        localStorage.setItem('searchedStudent', JSON.stringify(updated));
+        document.getElementById('msg').innerText = '✅ Updated';
+      } catch (err) {
+        console.error(err);
+        alert('Failed to update student');
+      }
+    }
+
+    async function deleteStudent() {
+      if (!student || !student.id) {
+        alert('No student id available to delete');
+        return;
+      }
+      if (!confirm('Delete this student?')) return;
+      try {
+        const res = await fetch(`/api/students/${student.id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        // remove stored searchedStudent and navigate back
+        localStorage.removeItem('searchedStudent');
+        alert('Deleted');
+        window.location.href = 'index.html';
+      } catch (err) {
+        console.error(err);
+        alert('Failed to delete student');
+      }
+    }
+
+    renderForm(student);
+  </script>
+</body>
+</html>
